@@ -1,50 +1,17 @@
-import { clerkMiddleware, getAuth } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export default clerkMiddleware();
+const isProtectedRoute = createRouteMatcher([
+  // '/',
+  '/events/:id',
+  '/api/webhook/clerk',
+  '/api/webhook/stripe',
+  '/api/uploadthing'
+]);
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+export default clerkMiddleware((auth, req) => {
+  if (isProtectedRoute(req)) auth().protect();
+});
 
-  // Define public routes
-  const publicRoutes = [
-    '/',
-    '/events/:id',
-    '/api/webhook/clerk',
-    '/api/webhook/stripe',
-    '/api/uploadthing'
-  ]
-
-  // Define routes to ignore (no middleware processing)
-  const ignoredRoutes = [
-    '/api/webhook/clerk',
-    '/api/webhook/stripe',
-    '/api/uploadthing'
-  ]
-
-  // Check if the current route matches any ignore route
-  if (ignoredRoutes.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
-  // If the current route is public, continue without checking for authentication
-  if (publicRoutes.includes(pathname)) {
-    return NextResponse.next();
-  }
-
-  // Check for authentication
-  const { userId } = getAuth(req);
-
-  // If the user is not authenticated, redirect to the sign-in page
-  if (!userId) {
-    const signInUrl = new URL('/sign-in', req.url);
-    return NextResponse.redirect(signInUrl);
-  }
-
-  // If authenticated, proceed to the requested page
-  return NextResponse.next();
-}
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
